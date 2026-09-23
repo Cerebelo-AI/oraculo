@@ -1,6 +1,0 @@
-[Unit]
-Description=Snapshot da configuração real do Steam Deck (git)
-
-[Service]
-Type=oneshot
-ExecStart=%h/.local/bin/deck-snapshot auto

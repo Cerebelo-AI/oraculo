@@ -1,2 +1,0 @@
-# Steam Deck controller HID: allow the seat user to read raw reports (same as Valve steam-devices rules)
-KERNEL=="hidraw*", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="1205", MODE="0660", TAG+="uaccess"
