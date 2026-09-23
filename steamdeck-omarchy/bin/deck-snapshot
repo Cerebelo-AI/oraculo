@@ -6,6 +6,7 @@
 set -uo pipefail
 REPO="${DECK_SNAPSHOT_REPO:-$HOME/Projetos/deck-estado}"
 H="$HOME"
+cd "$H" || exit 1   # rsync falha se o diretório atual não existir mais
 
 # Caminhos do usuário (relativos a $HOME). Diretórios são copiados inteiros.
 USER_PATHS=(
@@ -31,7 +32,11 @@ SYS_PATHS=(
   /etc/sddm.conf.d /etc/sddm/hyprland-osk.lua
   /usr/local/bin/steamdeck-osk
 )
-EXCLUDES=(--exclude '__pycache__' --exclude '*.o' --exclude '.git' --exclude 'mimeinfo.cache'
+# Nunca copiar material sensível, mesmo para o repositório privado.
+SECRET_EXCLUDES=(--exclude '.ssh' --exclude '*.pem' --exclude '*.key' --exclude 'id_*' --exclude '.env*'
+                 --exclude '*credential*' --exclude '*secret*' --exclude '*token*' --exclude '*.password'
+                 --exclude 'Cookies*' --exclude '*.kdbx' --exclude '.netrc' --exclude '.git-credentials')
+EXCLUDES=("${SECRET_EXCLUDES[@]}" --exclude '__pycache__' --exclude '*.o' --exclude '.git' --exclude 'mimeinfo.cache'
           --exclude 'wvkbd-deck' --exclude 'wvkbd-deskintl' --exclude 'wvkbd-mobintl')
 
 case "${1:-}" in
@@ -68,6 +73,13 @@ done
 
 cd "$REPO" || exit 1
 git add -A
+# Trava de segredos: se o gitleaks achar qualquer coisa, nada é gravado nem enviado.
+if command -v gitleaks >/dev/null && ! gitleaks git --pre-commit --staged --no-banner --redact . >/tmp/deck-snapshot-leaks.log 2>&1; then
+  git reset -q
+  echo "deck-snapshot: BLOQUEADO — possível segredo; nada foi gravado. Veja /tmp/deck-snapshot-leaks.log" >&2
+  command -v notify-send >/dev/null && notify-send -u critical "deck-snapshot bloqueado" "Possível segredo nos arquivos. Nada foi enviado ao GitHub."
+  exit 1
+fi
 if git diff --cached --quiet; then
   echo "deck-snapshot: nada mudou"
 else
