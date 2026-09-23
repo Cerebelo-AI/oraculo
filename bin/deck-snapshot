@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# deck-snapshot — guarda a versão REAL de tudo que customizamos no Deck num git local
+# ($DECK_SNAPSHOT_REPO, padrão ~/Projetos/deck-estado) e envia para o GitHub privado, se houver remote.
+# Uso: deck-snapshot ["mensagem"]   |   deck-snapshot --log   |   deck-snapshot --diff
+# Roda sozinho pelo timer deck-snapshot.timer (boot + a cada 10 min). Nikola, 23/09/2026.
+set -uo pipefail
+REPO="${DECK_SNAPSHOT_REPO:-$HOME/Projetos/deck-estado}"
+H="$HOME"
+cd "$H" || exit 1   # rsync falha se o diretório atual não existir mais
+
+# Caminhos do usuário (relativos a $HOME). Diretórios são copiados inteiros.
+USER_PATHS=(
+  .config/hypr
+  .config/iniciar/apps.conf .config/iniciar/mesas.conf
+  .config/mosaico
+  .config/voxtype
+  .config/omarchy/shell.json
+  .local/bin/steamdeck-buttons .local/bin/steamdeck-osk .local/bin/steamdeck-osk-lock-watch
+  .local/bin/mosaico .local/bin/iniciar .local/bin/tarefas .local/bin/deck-snapshot
+  .local/share/applications
+  .local/share/icons/hicolor/256x256/apps
+  .local/share/steamdeck-omarchy/MAPA-BOTOES.md
+  .config/systemd/user/deck-snapshot.service .config/systemd/user/deck-snapshot.timer
+  src/wvkbd-deck
+)
+# Caminhos do sistema (leitura via sudo -n; nada de segredo: só regras e configs).
+SYS_PATHS=(
+  /etc/udev/rules.d/60-steamdeck-controller.rules
+  /etc/udev/rules.d/70-wispr-flow-uinput.rules
+  /etc/mkinitcpio.conf /etc/mkinitcpio.conf.d
+  /etc/default/limine /etc/kernel/cmdline
+  /etc/sddm.conf.d /etc/sddm/hyprland-osk.lua
+  /usr/local/bin/steamdeck-osk
+)
+# Nunca copiar material sensível, mesmo para o repositório privado.
+SECRET_EXCLUDES=(--exclude '.ssh' --exclude '*.pem' --exclude '*.key' --exclude 'id_*' --exclude '.env*'
+                 --exclude '*credential*' --exclude '*secret*' --exclude '*token*' --exclude '*.password'
+                 --exclude 'Cookies*' --exclude '*.kdbx' --exclude '.netrc' --exclude '.git-credentials')
+EXCLUDES=("${SECRET_EXCLUDES[@]}" --exclude '__pycache__' --exclude '*.o' --exclude '.git' --exclude 'mimeinfo.cache'
+          --exclude 'wvkbd-deck' --exclude 'wvkbd-deskintl' --exclude 'wvkbd-mobintl')
+
+case "${1:-}" in
+  --log)  exec git -C "$REPO" log --stat --date=format:'%d/%m %H:%M' -n "${2:-15}" ;;
+  --diff) exec git -C "$REPO" diff HEAD~1 ;;
+esac
+
+mkdir -p "$REPO"
+[[ -d "$REPO/.git" ]] || git -C "$REPO" init -q -b main
+
+for p in "${USER_PATHS[@]}"; do
+  src="$H/$p"; dst="$REPO/home/$p"
+  [[ -e "$src" ]] || continue
+  mkdir -p "$(dirname "$dst")"
+  if [[ -d "$src" ]]; then rsync -a --delete "${EXCLUDES[@]}" "$src/" "$dst/"
+  else rsync -a "$src" "$dst"; fi
+done
+for p in "${SYS_PATHS[@]}"; do
+  dst="$REPO/root$p"
+  sudo -n test -e "$p" 2>/dev/null || continue
+  mkdir -p "$(dirname "$dst")"
+  if sudo -n test -d "$p"; then sudo -n rsync -a --delete "$p/" "$dst/"
+  else sudo -n rsync -a "$p" "$dst"; fi
+  sudo -n chown -R "$(id -u):$(id -g)" "$dst"
+done
+
+# Estado que não é arquivo: pacotes explícitos, serviços, versão do daemon.
+{
+  echo "# gerado por deck-snapshot"; echo
+  echo "## pacotes explícitos"; pacman -Qe 2>/dev/null
+  echo; echo "## units de usuário habilitadas"; systemctl --user list-unit-files --state=enabled --no-legend 2>/dev/null
+  echo; echo "## daemon"; grep -m1 -o 'v7\.[0-9]* [^;]*$' "$H/.local/bin/steamdeck-buttons" 2>/dev/null
+} > "$REPO/estado.txt"
+
+cd "$REPO" || exit 1
+git add -A
+# Trava de segredos: se o gitleaks achar qualquer coisa, nada é gravado nem enviado.
+if command -v gitleaks >/dev/null && ! gitleaks git --pre-commit --staged --no-banner --redact . >/tmp/deck-snapshot-leaks.log 2>&1; then
+  git reset -q
+  echo "deck-snapshot: BLOQUEADO — possível segredo; nada foi gravado. Veja /tmp/deck-snapshot-leaks.log" >&2
+  command -v notify-send >/dev/null && notify-send -u critical "deck-snapshot bloqueado" "Possível segredo nos arquivos. Nada foi enviado ao GitHub."
+  exit 1
+fi
+if git diff --cached --quiet; then
+  echo "deck-snapshot: nada mudou"
+else
+  files=$(git diff --cached --name-only | sed 's|^home/||;s|^root||' | head -8 | tr '\n' ' ')
+  git -c user.name="deck-snapshot" -c user.email="deck-snapshot@steamdeck" \
+      commit -q -m "${1:-auto} — $files" && echo "deck-snapshot: $(git log -1 --format='%h %s')"
+fi
+if git remote get-url origin >/dev/null 2>&1; then
+  GIT_SSH_COMMAND="ssh -i ${DECK_SNAPSHOT_KEY:-$H/.ssh/deck-estado} -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new" \
+    timeout 60 git push -q origin main 2>&1 | tail -2 || true
+fi

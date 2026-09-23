@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "key": "iniciar:telegram"
+    },
+    {
+      "key": "iniciar:discord"
+    },
+    {
+      "key": "iniciar:grok-bot"
+    },
+    {
+      "key": "iniciar:chrome"
+    },
+    {
+      "key": "iniciar:gmail"
+    },
+    {
+      "key": "iniciar:gcal"
+    },
+    {
+      "key": "iniciar:wispr-flow"
+    },
+    {
+      "key": "iniciar:youtube"
+    },
+    {
+      "key": "iniciar:linkedin"
+    },
+    {
+      "key": "iniciar:facebook"
+    },
+    {
+      "key": "iniciar:instagram"
+    },
+    {
+      "key": "iniciar:x"
+    },
+    {
+      "key": "iniciar:macstudio-vnc"
+    },
+    {
+      "key": "iniciar:openclaw"
+    },
+    {
+      "key": "iniciar:paperclip"
+    },
+    {
+      "key": "iniciar:hermes-web"
+    },
+    {
+      "key": "iniciar:multica"
+    },
+    {
+      "key": "iniciar:claude"
+    },
+    {
+      "key": "iniciar:codex"
+    },
+    {
+      "key": "iniciar:cursor-agent"
+    },
+    {
+      "key": "iniciar:antigravity"
+    },
+    {
+      "key": "iniciar:muse"
+    },
+    {
+      "key": "desktop:Asaas.desktop"
+    }
+  ]
+}

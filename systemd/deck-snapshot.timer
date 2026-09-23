@@ -1,0 +1,9 @@
+[Unit]
+Description=Snapshot da configuração do Deck no boot e a cada 10 minutos
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+
+[Install]
+WantedBy=timers.target
