@@ -1,6 +1,6 @@
 # Steam Deck OLED + Omarchy, sem teclado
 
-Parte do [Oráculo by Samir · Cerebelo.AI](https://github.com/Cerebelo-AI/oraculo).
+Parte do [Oráculo by Samir · Cerebelo.AI](https://github.com/oraculobysamir/oraculo).
 
 Transforma um Steam Deck OLED rodando [Omarchy](https://omarchy.org) 4 (Arch + Hyprland) num
 computador de bolso usável só com os controles, a tela de toque e a voz. Sem Steam e sem Steam Input:
@@ -26,8 +26,8 @@ Testado no Steam Deck OLED (1 TB) com Omarchy 4.0.4, Hyprland 0.56 e kernel 7.2.
 Leia o script antes: ele instala regras udev (com `sudo`) e compila o wvkbd.
 
 ```bash
-git clone https://github.com/Cerebelo-AI/oraculo-steamdeck-omarchy.git
-cd oraculo-steamdeck-omarchy
+git clone https://github.com/oraculobysamir/oraculo.git
+cd oraculo/steamdeck-omarchy
 ./install.sh
 ```
 
