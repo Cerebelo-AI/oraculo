@@ -1,0 +1,13 @@
+# Nunca versionar material sensível
+.env
+.env.*
+*.pem
+*.key
+id_*
+*.password
+*credential*
+*secret*
+*token*
+.netrc
+.git-credentials
+__pycache__/
